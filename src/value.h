@@ -6,14 +6,25 @@
 typedef double Value;
 
 typedef struct {
-  int capacity;
-  int count;
-  Value* values;
+	int capacity;
+	int count;
+	int *lines;
+	int *times;
+} Lignes;
+
+typedef struct {
+	int capacity;
+	int count;
+	Value *values;
 } ValueArray;
 
-void initValueArray(ValueArray* array);
-void writeValueArray(ValueArray* array, Value value);
-void freeValueArray(ValueArray* array);
-void printValue(Value value);
+void init_value_array(ValueArray *array);
+void write_value_array(ValueArray *array, Value value);
+void free_value_array(ValueArray *array);
+void print_value(Value value);
+
+void init_lines(Lignes *lines);
+void write_lines(Lignes *lines, int line);
+void free_lines(Lignes *lines);
 
 #endif
