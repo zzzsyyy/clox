@@ -9,14 +9,18 @@ int main(int argc, char *argv[]) {
 	Chunk chunk;
 	init_chunk(&chunk);
 	int constant = add_constant(&chunk, 1.2);
-	int cs = add_constant(&chunk, 2.2);
-	write_chunk(&chunk, OP_CONSTANT, 12);
-	write_chunk(&chunk, constant, 12);
-	write_chunk(&chunk, OP_CONSTANT, 13);
-	write_chunk(&chunk, cs, 13);
-	write_chunk(&chunk, OP_CONSTANT, 14);
-	write_chunk(&chunk, cs, 14);
-	write_chunk(&chunk, OP_RETURN, 14);
+  write_chunk(&chunk, OP_CONSTANT, 123);
+  write_chunk(&chunk, constant, 123);
+  constant = add_constant(&chunk, 3.4);
+  write_chunk(&chunk, OP_CONSTANT, 123);
+  write_chunk(&chunk, constant, 123);
+  write_chunk(&chunk, OP_ADD, 123);
+  constant = add_constant(&chunk, 5.6);
+  write_chunk(&chunk, OP_CONSTANT, 123);
+  write_chunk(&chunk, constant, 123);
+  write_chunk(&chunk, OP_DIVIDE, 123);
+  write_chunk(&chunk, OP_NEGATE, 123);
+  write_chunk(&chunk, OP_RETURN, 123);
 	// printf("%d\n", chunk.capacity);
 	// printf("%d\n", chunk.count);
 	// for (int i=0; i < chunk.lines.capacity; i++){
