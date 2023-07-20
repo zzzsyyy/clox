@@ -38,3 +38,12 @@ void free_chunk(Chunk *chunk) {
 	free_value_array(&chunk->constants);
 	init_chunk(chunk);
 }
+
+int get_line(Chunk *chunk, int idx){
+	int sum, i= 0;
+	while(idx + 1 > sum){
+		sum+=chunk->lines.times[i];
+		i+=1;
+	}
+	return chunk->lines.lines[i-1];
+}

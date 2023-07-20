@@ -14,9 +14,18 @@ void disassemble_chunk(Chunk *chunk, const char *name) {
 }
 
 static int constant_instruction(const char *name, Chunk *chunk, int offset) {
-	uint8_t constant = chunk->code[offset + 1];
-	printf("%-16s %4d '", name, constant);
-	print_value(chunk->constants.values[constant]);
+	uint8_t const_idx = chunk->code[offset + 1];
+	printf("%s\t%4d '", name, const_idx);
+	print_value(chunk->constants.values[const_idx]);
+	printf("'\n");
+	return offset + 2;
+}
+
+static int constant_long_instruction(const char *name,Chunk *chunk, int offset){
+	// @TODO
+	uint8_t const_idx = chunk->code[offset + 1];
+	printf("%s\t%4d '", name, const_idx);
+	print_value(chunk->constants.values[const_idx]);
 	printf("'\n");
 	return offset + 2;
 }
@@ -29,15 +38,17 @@ static int simple_instruction(const char *name, int offset) {
 int disassemble_instruction(Chunk *chunk, int offset) {
 	printf("%04d ", offset);
 
-	// if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1]) {
-	// 	printf("\t| ");
-	// } else {
-	// 	printf("%4d ", chunk->lines[offset]);
-	// }
+	if (offset > 0 && get_line(chunk, offset) == get_line(chunk, offset - 1)) {
+		printf("\t| ");
+	} else {
+		printf("%4d ", get_line(chunk, offset));
+	}
 	uint8_t instruction = chunk->code[offset];
 	switch (instruction) {
 	case OP_CONSTANT:
 		return constant_instruction("OP_CONSTANT", chunk, offset);
+	case OP_CONSTANT_LONG:
+		return constant_long_instruction("OP_CONSTANT_LONG", chunk, offset);
 	case OP_RETURN:
 		return simple_instruction("OP_RETURN", offset);
 	default:
