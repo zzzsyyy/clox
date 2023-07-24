@@ -21,7 +21,7 @@ void init_scanner(const char *src) {
 static bool is_digit(char c) { return c >= '0' && c <= '9'; }
 
 static bool is_alpha(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+	return (c >= 'A' && c <= 'z') || c == '_';
 }
 
 static bool is_at_end() { return *scanner.current == '\0'; }
