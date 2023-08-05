@@ -4,7 +4,7 @@
 #include "debug.h"
 #include "value.h"
 #include <stdio.h>
-#include "complier.h"
+#include "compiler.h"
 
 VM vm;
 
@@ -73,7 +73,7 @@ static InterpretResult run() {
 InterpretResult interpret(const char *src) {
 	Chunk chunk;
 	init_chunk(&chunk);
-	if (!complie(src, &chunk)) {
+	if (!compile(src, &chunk)) {
 		free_chunk(&chunk);
 		return INTERPRET_COMPILE_ERROR;
 	}

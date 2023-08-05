@@ -4,8 +4,11 @@
 
 #include "chunk.h"
 #include "common.h"
-#include "complier.h"
+#include "compiler.h"
 #include "scanner.h"
+#ifdef DEBUG_PRINT_CODE
+#include "debug.h"
+#endif
 
 typedef struct {
 	Token previous;
@@ -109,9 +112,18 @@ static void emit_constant(Value value) {
 	emit_bytes(OP_CONSTANT, make_constant(value));
 }
 
-static void end_complier() {
+static void end_compiler() {
 	emit_return();
+#ifdef DEBUG_PRINT_CODE
+	if (!parser.had_err){
+		disassemble_chunk(current_chunk(), "code");
+	}
+#endif
 }
+
+static void expression();
+static ParseRule* get_rule(TokenType type);
+static void parse_precedence(Precedence precedence);
 
 static void binary() {
 	TokenType operator_type = parser.previous.type;
@@ -137,7 +149,7 @@ static void binary() {
 
 static void grouping() {
 	expression();
-	consume(TOKEN_LEFT_PAREN, "Expect ')' after expression.");
+	consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
 static void number() {
@@ -197,8 +209,23 @@ ParseRule rules[] = {
   [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
 };
 
-static void parse_precedence(Precedenc precedence) {
+static void parse_precedence(Precedence precedence) {
+	advance();
+	ParseFn prefix_rule = get_rule(parser.previous.type)->prefix;
+	if (prefix_rule == NULL) {
+		error("Expect expression.");
+		return;
+	}
+	prefix_rule();
+	while (precedence <= get_rule(parser.current.type)->precedence){
+		advance();
+		ParseFn infix_rule = get_rule(parser.previous.type)->infix;
+		infix_rule();
+	}
+}
 
+static ParseRule *get_rule(TokenType type) {
+	return &rules[type];
 }
 
 static void expression() {
@@ -213,7 +240,7 @@ bool compile(const char *src, Chunk *chunk) {
 	advance();
 	expression();
 	consume(TOKEN_EOF, "Expect end of expression.");
-	end_complier();
+	end_compiler();
 	return !parser.had_err;
 	// int line = -1;
 	// for (;;) {
@@ -227,6 +254,6 @@ bool compile(const char *src, Chunk *chunk) {
 	// 	printf("%2d '%.*s'\n", token.type, token.length, token.start);
 
 	// 	if (token.type == TOKEN_EOF) break;
-	}
+	// }
 }
 
