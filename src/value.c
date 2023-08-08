@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "memory.h"
+#include "scanner.h"
 #include "value.h"
 #include "chunk.h"
 
@@ -27,7 +28,25 @@ void free_value_array(ValueArray *array) {
 	init_value_array(array);
 }
 
-void print_value(Value value) { printf("%g", value); }
+void print_value(Value value) {
+	switch (value.type){
+		case VAL_BOOL:
+			printf(AS_BOOL(value) ? "true" : "false");
+			break;
+		case VAL_NIL: printf("nil"); break;
+		case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break; 
+	}
+}
+
+bool values_equal(Value a, Value b) {
+	if (a.type != b.type) return false;
+	switch (a.type) {
+		case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
+		case VAL_NIL:    return true;
+		case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
+		default:         return false;
+	}
+}
 
 void init_lines(Lignes *lines){
 	lines->capacity = 0;
@@ -56,4 +75,16 @@ void free_lines(Lignes *lines){
 	FREE_ARRAY(int, lines->lines, lines->capacity);
 	FREE_ARRAY(int, lines->times, lines->capacity);
 	init_lines(lines);
+}
+
+int get_line_by_num(Lignes *lines, int num) {
+	if (num > lines->count){
+		return -1;
+	}
+	int idx = 0;
+	int cur = 0;
+	if (idx < num){
+		idx+=lines->times[cur++];
+	}
+	return lines->lines[idx-1];
 }
