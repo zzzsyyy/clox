@@ -27,11 +27,16 @@ typedef struct {
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 
 typedef struct {
+	int lineNumber;
+	int runLength;
+} Run;
+
+typedef struct {
 	int capacity;
 	int count;
-	int *lines;
-	int *times;
+	Run *runs;
 } Lignes;
+
 
 typedef struct {
 	int capacity;
@@ -45,9 +50,9 @@ void write_value_array(ValueArray *array, Value value);
 void free_value_array(ValueArray *array);
 void print_value(Value value);
 
-void init_lines(Lignes *lines);
-void write_lines(Lignes *lines, int line);
-void free_lines(Lignes *lines);
-int get_line_by_num(Lignes *lines, int num);
+void initLines(Lignes *lines);
+void writeLines(Lignes *lines, int line);
+void freeLines(Lignes *lines);
+int getLineByNumber(Lignes *lines, int num);
 
 #endif

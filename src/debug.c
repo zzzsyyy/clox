@@ -38,10 +38,10 @@ static int simple_instruction(const char *name, int offset) {
 int disassemble_instruction(Chunk *chunk, int offset) {
 	printf("%04d ", offset);
 
-	if (offset > 0 && get_line(chunk, offset) == get_line(chunk, offset - 1)) {
+	if (offset > 0 && getLineByNumber(&chunk->lines, offset) == getLineByNumber(&chunk->lines, offset - 1)) {
 		printf("\t| ");
 	} else {
-		printf("%4d ", get_line(chunk, offset));
+		printf("%4d ", getLineByNumber(&chunk->lines, offset));
 	}
 	uint8_t instruction = chunk->code[offset];
 	switch (instruction) {

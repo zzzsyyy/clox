@@ -48,43 +48,44 @@ bool values_equal(Value a, Value b) {
 	}
 }
 
-void init_lines(Lignes *lines){
+void initLines(Lignes *lines){
 	lines->capacity = 0;
 	lines->count = -1;
-	lines->lines = NULL;
-	lines->times = NULL;
+	lines->runs = NULL;
 }
 
-void write_lines(Lignes *lines, int line){
+void writeLines(Lignes *lines, int line){
 	if (lines->capacity	<= lines->count + 1){
 		int old_capacity = lines->capacity;
 		lines->capacity = GROW_CAPACITY(old_capacity);
-		lines->times = GROW_ARRAY(int, lines->times, old_capacity, lines->capacity);
-		lines->lines = GROW_ARRAY(int, lines->lines, old_capacity, lines->capacity);
+		lines->runs = GROW_ARRAY(Run, lines->runs, old_capacity, lines->capacity);
 	}
-	if (lines->count == -1 || lines->lines[lines->count] != line){
+
+	if (lines->count == -1) {
+		lines->count = 0;
+		lines->runs[0].lineNumber = line;
+		lines->runs[0].runLength = 1;
+	} else if (line == lines->runs[lines->count].lineNumber){
+		lines->runs[lines->count].runLength+=1;
+	} else {
 		lines->count++;
-		lines->lines[lines->count] = line;
-		lines->times[lines->count] = 1;
-	}else{
-		lines->times[lines->count]++;
+		lines->runs[lines->count].lineNumber = line;
+		lines->runs[lines->count].runLength = 1;
 	}
+	// printf("\n%i:\t%i:\t%i:\t%i", lines->count, lines->capacity, lines->runs[lines->count].lineNumber,lines->runs[lines->count].runLength);
 }
 
-void free_lines(Lignes *lines){
-	FREE_ARRAY(int, lines->lines, lines->capacity);
-	FREE_ARRAY(int, lines->times, lines->capacity);
-	init_lines(lines);
+void freeLines(Lignes *lines){
+	FREE_ARRAY(Run, lines->runs, lines->capacity);
+	initLines(lines);
 }
 
-int get_line_by_num(Lignes *lines, int num) {
-	if (num > lines->count){
-		return -1;
-	}
+int getLineByNumber(Lignes *lines, int num) {
 	int idx = 0;
-	int cur = 0;
-	if (idx < num){
-		idx+=lines->times[cur++];
+	while (num-lines->runs[idx].runLength>0 && idx<=lines->count){
+		num-=lines->runs[idx].runLength;
+		idx++;
 	}
-	return lines->lines[idx-1];
+	// printf("\n===%i===\n", lines->runs[idx].lineNumber);
+	return lines->count - idx > 0 ? lines->runs[idx].lineNumber : -1;
 }

@@ -18,7 +18,7 @@ static void runtime_err(const char* format, ...) {
   va_end(args);
   fputs("\n", stderr);
 	size_t instruction = vm.ip - vm.chunk->code - 1;
-  int line = get_line_by_num(&vm.chunk->lines, instruction);
+  int line = getLineByNumber(&vm.chunk->lines, instruction);
   fprintf(stderr, "[line %d] in script\n", line);
 	reset_stack();
 }

@@ -8,7 +8,7 @@ void init_chunk(Chunk *chunk) {
 	chunk->count = 0;
 	chunk->capacity = 0;
 	chunk->code = NULL;
-	init_lines(&chunk->lines);
+	initLines(&chunk->lines);
 	init_value_array(&chunk->constants);
 }
 void write_chunk(Chunk *chunk, uint8_t byte, int line) {
@@ -19,7 +19,7 @@ void write_chunk(Chunk *chunk, uint8_t byte, int line) {
 				GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
 	}
 	chunk->code[chunk->count] = byte;
-	write_lines(&chunk->lines, line);
+	writeLines(&chunk->lines, line);
 	chunk->count++;
 }
 
@@ -34,16 +34,16 @@ int add_constant(Chunk *chunk, Value value) {
 
 void free_chunk(Chunk *chunk) {
 	FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
-	free_lines(&chunk->lines);
+	freeLines(&chunk->lines);
 	free_value_array(&chunk->constants);
 	init_chunk(chunk);
 }
 
-int get_line(Chunk *chunk, int idx){
-	int sum, i= 0;
-	while(idx + 1 > sum){
-		sum+=chunk->lines.times[i];
-		i+=1;
-	}
-	return chunk->lines.lines[i-1];
-}
+// int get_line(Chunk *chunk, int idx){
+// 	int sum, i= 0;
+// 	while(idx + 1 > sum){
+// 		sum+=chunk->lines.times[i];
+// 		i+=1;
+// 	}
+// 	return chunk->lines.lines[i-1];
+// }
