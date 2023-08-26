@@ -11,6 +11,7 @@ void init_chunk(Chunk *chunk) {
 	initLines(&chunk->lines);
 	init_value_array(&chunk->constants);
 }
+
 void write_chunk(Chunk *chunk, uint8_t byte, int line) {
 	if (chunk->capacity < chunk->count + 1) {
 		int oldCapacity = chunk->capacity;
@@ -28,10 +29,6 @@ int add_constant(Chunk *chunk, Value value) {
 	return chunk->constants.count - 1;
 }
 
-// void write_constant(Chunk *chunk, Value value, int line){
-	
-// }
-
 void free_chunk(Chunk *chunk) {
 	FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
 	freeLines(&chunk->lines);
@@ -39,11 +36,3 @@ void free_chunk(Chunk *chunk) {
 	init_chunk(chunk);
 }
 
-// int get_line(Chunk *chunk, int idx){
-// 	int sum, i= 0;
-// 	while(idx + 1 > sum){
-// 		sum+=chunk->lines.times[i];
-// 		i+=1;
-// 	}
-// 	return chunk->lines.lines[i-1];
-// }

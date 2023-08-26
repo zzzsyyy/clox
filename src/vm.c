@@ -8,6 +8,7 @@
 #include "compiler.h"
 
 VM vm;
+bool foundConstantLong = false;
 
 static void reset_stack() { vm.stack_top = vm.stack; }
 
@@ -69,11 +70,25 @@ static InterpretResult run() {
 			printf(" ]");
 		}
 		printf("\n");
+		int offset = (int)(vm.ip - vm.chunk->code);
+		int prevInstruc = vm.chunk->code[offset - 2];
+		if (prevInstruc == OP_CONSTANT_LONG && foundConstantLong) {
+			// this flag is use to assert prevInstruc is a opCode not a number 7
+			// opcode byte byte byte
+			vm.ip += 2; 
+			foundConstantLong = false;
+		}
 		disassemble_instruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
 #endif
 		uint8_t instruction;
 		switch (instruction = READ_BYTE()) {
 		case OP_CONSTANT: {
+			Value constant = READ_CONSTANT();
+			push(constant);
+			break;
+		}
+		case OP_CONSTANT_LONG: {
+			foundConstantLong = true;
 			Value constant = READ_CONSTANT();
 			push(constant);
 			break;

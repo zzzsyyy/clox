@@ -7,6 +7,9 @@
 #include "compiler.h"
 #include "scanner.h"
 #include "value.h"
+
+#define THREE_BYTE_MAX 16777216 //2^24
+
 #ifdef DEBUG_PRINT_CODE
 #include "debug.h"
 #endif
@@ -67,7 +70,7 @@ static void error_at_current(const char *msg) {
 }
 
 static void error(const char* msg) {
-  error_at(&parser.previous, msg);
+	error_at(&parser.previous, msg);
 }
 
 static void advance() {
@@ -102,15 +105,25 @@ static void emit_return() {
 
 static uint8_t make_constant(Value value) {
 	int constant = add_constant(current_chunk(), value);
-	if (constant > UINT8_MAX) {
-		error("Too many constants in one chunk.");
-		return 0;
-	}
 	return (uint8_t)constant;
 }
 
+static void writeConstant(Chunk *chunk, Value value, int line) {
+	uint32_t idx = (uint32_t)add_constant(chunk, value);
+	if (idx > THREE_BYTE_MAX) {
+		error("Too many constants in one chunk. Maximum allowed are 2^24.");
+	}
+	// use >> &0xff devide 8 8 8
+	emit_bytes(OP_CONSTANT_LONG, (uint8_t)(idx & 0xff));
+	emit_bytes((uint8_t)((idx >> 8) & 0xff), (uint8_t)((idx >> 16) & 0xff));
+}
+
 static void emit_constant(Value value) {
-	emit_bytes(OP_CONSTANT, make_constant(value));
+	if (current_chunk()->constants.count > UINT8_MAX) {
+		writeConstant(current_chunk(), value, parser.previous.line);
+	} else {
+		emit_bytes(OP_CONSTANT, make_constant(value));
+	}
 }
 
 static void end_compiler() {
@@ -133,10 +146,10 @@ static void binary() {
 	switch (operator_type) {
 	case TOKEN_BANG_EQUAL:    emit_bytes(OP_EQUAL, OP_NOT); break;
 	case TOKEN_EQUAL_EQUAL:   emit_byte(OP_EQUAL); break;
-  case TOKEN_GREATER:       emit_byte(OP_GREATER); break;
-  case TOKEN_GREATER_EQUAL: emit_bytes(OP_LESS, OP_NOT); break;
-  case TOKEN_LESS:          emit_byte(OP_LESS); break;
-  case TOKEN_LESS_EQUAL:    emit_bytes(OP_GREATER, OP_NOT); break;
+	case TOKEN_GREATER:       emit_byte(OP_GREATER); break;
+	case TOKEN_GREATER_EQUAL: emit_bytes(OP_LESS, OP_NOT); break;
+	case TOKEN_LESS:          emit_byte(OP_LESS); break;
+	case TOKEN_LESS_EQUAL:    emit_bytes(OP_GREATER, OP_NOT); break;
 	case TOKEN_PLUS:          emit_byte(OP_ADD); break;
 	case TOKEN_MINUS:         emit_byte(OP_SUBTRACT); break;
 	case TOKEN_STAR:          emit_byte(OP_MULTIPLY); break;
@@ -175,46 +188,46 @@ static void unary() {
 }
 
 ParseRule rules[] = {
-  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
-  [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
-  [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
-  [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
-  [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
-  [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
-  [TOKEN_BANG]          = {unary,    NULL,   PREC_NONE},
-  [TOKEN_BANG_EQUAL]    = {NULL,     binary, PREC_EQUALITY},
-  [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_EQUAL_EQUAL]   = {NULL,     binary, PREC_EQUALITY},
-  [TOKEN_GREATER]       = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
-  [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
-  [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_TRUE]          = {literal,     NULL,   PREC_NONE},
-  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+	[TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
+	[TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
+	[TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
+	[TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
+	[TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
+	[TOKEN_BANG]          = {unary,    NULL,   PREC_NONE},
+	[TOKEN_BANG_EQUAL]    = {NULL,     binary, PREC_EQUALITY},
+	[TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_EQUAL_EQUAL]   = {NULL,     binary, PREC_EQUALITY},
+	[TOKEN_GREATER]       = {NULL,     binary, PREC_COMPARISON},
+	[TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
+	[TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
+	[TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
+	[TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
+	[TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
+	[TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
+	[TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_TRUE]          = {literal,     NULL,   PREC_NONE},
+	[TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
+	[TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
 };
 
 static void parse_precedence(Precedence precedence) {
@@ -241,7 +254,7 @@ static void expression() {
 }
 
 bool compile(const char *src, Chunk *chunk) {
-  init_scanner(src);
+	init_scanner(src);
 	compiling_chunk = chunk;
 	parser.had_err = false;
 	parser.panic_mode = false;
