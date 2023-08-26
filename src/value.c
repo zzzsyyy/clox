@@ -72,7 +72,6 @@ void writeLines(Lignes *lines, int line){
 		lines->runs[lines->count].lineNumber = line;
 		lines->runs[lines->count].runLength = 1;
 	}
-	// printf("\n%i:\t%i:\t%i:\t%i", lines->count, lines->capacity, lines->runs[lines->count].lineNumber,lines->runs[lines->count].runLength);
 }
 
 void freeLines(Lignes *lines){
@@ -82,10 +81,9 @@ void freeLines(Lignes *lines){
 
 int getLineByNumber(Lignes *lines, int num) {
 	int idx = 0;
-	while (num-lines->runs[idx].runLength>0 && idx<=lines->count){
+	while (num-lines->runs[idx].runLength>=0 && idx<=lines->count){
 		num-=lines->runs[idx].runLength;
 		idx++;
 	}
-	// printf("\n===%i===\n", lines->runs[idx].lineNumber);
-	return lines->count - idx > 0 ? lines->runs[idx].lineNumber : -1;
+	return lines->count - idx >= 0 ? lines->runs[idx].lineNumber : -1;
 }
