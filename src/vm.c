@@ -2,17 +2,21 @@
 #include "chunk.h"
 #include "common.h"
 #include "debug.h"
+#include "memory.h"
 #include "value.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <time.h>
 #include "compiler.h"
 
 VM vm;
 bool foundConstantLong = false;
 
-static void reset_stack() { vm.stack_top = vm.stack; }
+static void resetStack() { 
+	vm.stackCount = 0;
+}
 
-static void runtime_err(const char* format, ...) {
+static void runtimeError(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	vfprintf(stderr, format, args);
@@ -21,29 +25,54 @@ static void runtime_err(const char* format, ...) {
 	size_t instruction = vm.ip - vm.chunk->code - 1;
   int line = getLineByNumber(&vm.chunk->lines, instruction);
   fprintf(stderr, "[line %d] in script\n", line);
-	reset_stack();
+	resetStack();
 }
 
-void init_vm() { reset_stack(); }
+void initVm() {
+	vm.stack = NULL;
+	vm.stackCapacity = 0;
+	resetStack();
+}
 
-void free_vm() {}
+void freeVm() {
+	FREE_ARRAY(Value, vm.stack, vm.stackCapacity);
+}
 
 void push(Value value) {
-	*vm.stack_top = value;
-	vm.stack_top++;
+	if (vm.stackCount + 1 > vm.stackCapacity) {
+		int oldCapacity = vm.stackCapacity;
+		vm.stackCapacity = GROW_CAPACITY(oldCapacity);
+		vm.stack = GROW_ARRAY(Value, vm.stack, oldCapacity, vm.stackCapacity);
+	}
+	vm.stack[vm.stackCount] = value;
+	vm.stackCount++;
 }
 
 Value pop() {
-	vm.stack_top--;
-	return *vm.stack_top;
+	return vm.stack[--vm.stackCount];
 }
 
 static Value peek(int distance) {
-	return vm.stack_top[-1-distance];
+	return vm.stack[vm.stackCount - 1 -distance];
 }
 
-static bool is_falsey(Value value) {
+static bool isFalsey(Value value) {
 	return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
+static void testStack(bool boolean) {
+	struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
+
+	if (boolean) {
+		push(NUMBER_VAL(-AS_NUMBER(pop())));
+	} else {
+		vm.stack[vm.stackCount - 1] = NUMBER_VAL(- AS_NUMBER(vm.stack[vm.stackCount - 1]));
+	}
+
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	double exec_time_ns = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+	printf("RESULT: %f\n", exec_time_ns);
 }
 
 static InterpretResult run() {
@@ -53,7 +82,7 @@ static InterpretResult run() {
 #define BINARY_OP(value_type, op) \
 	do { \
 		if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
-			runtime_err("Operands must be numbers."); \
+			runtimeError("Operands must be numbers."); \
 			return INTERPRET_RUNTIME_ERROR; \
 		} \
 		double b = AS_NUMBER(pop()); \
@@ -64,7 +93,7 @@ static InterpretResult run() {
 	for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
 		printf("			");
-		for (Value *slot = vm.stack; slot < vm.stack_top; slot++) {
+		for (Value *slot = vm.stack; slot < vm.stack + vm.stackCount; slot++) {
 			printf("[ ");
 			print_value(*slot);
 			printf(" ]");
@@ -108,13 +137,14 @@ static InterpretResult run() {
 		case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
 		case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
 		case OP_DIVIDE:   BINARY_OP(NUMBER_VAL, /); break;
-		case OP_NOT: push(BOOL_VAL(is_falsey(pop()))); break;
+		case OP_NOT: push(BOOL_VAL(isFalsey(pop()))); break;
 		case OP_NEGATE:
 			if (!IS_NUMBER(peek(0))) {
-					runtime_err("Operand must be a number.");
+					runtimeError("Operand must be a number.");
 					return INTERPRET_RUNTIME_ERROR;
 				}
-			push(NUMBER_VAL(-AS_NUMBER(pop())));
+			testStack(false); // no-pop action seems to be faster a little bit
+			// testStack(true);
 			break;
 		case OP_RETURN: {
 			print_value(pop());

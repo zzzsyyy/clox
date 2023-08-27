@@ -53,7 +53,7 @@ static void run_file(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
-	init_vm();
+	initVm();
 	if (argc == 1) {
 		repl();
 	} else if (argc == 2){
@@ -62,6 +62,6 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Usage: clox [path]\n");
 		exit(64);
 	}
-	free_vm();
+	freeVm();
 	return 0;
 }

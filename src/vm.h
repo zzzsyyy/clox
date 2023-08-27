@@ -4,13 +4,12 @@
 #include "chunk.h"
 #include "value.h"
 
-#define STACK_MAX 256
-
 typedef struct {
 	Chunk *chunk;
 	uint8_t* ip; //Program Counter (PC)
-	Value stack[STACK_MAX];
-	Value *stack_top;
+	Value *stack;
+	int stackCapacity;
+	int stackCount;
 } VM;
 
 typedef enum {
@@ -19,11 +18,10 @@ typedef enum {
 	INTERPRET_RUNTIME_ERROR
 } InterpretResult;
 
-void init_vm();
-void free_vm();
+void initVm();
+void freeVm();
 InterpretResult interpret(const char *src);
 void push(Value value);
 Value pop();
-
 
 #endif
