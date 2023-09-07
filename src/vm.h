@@ -6,10 +6,11 @@
 
 typedef struct {
 	Chunk *chunk;
-	uint8_t* ip; //Program Counter (PC)
+	uint8_t *ip; //Program Counter (PC)
 	Value *stack;
 	int stackCapacity;
 	int stackCount;
+	Obj *objects;
 } VM;
 
 typedef enum {
@@ -17,6 +18,8 @@ typedef enum {
 	INTERPRET_COMPILE_ERROR,
 	INTERPRET_RUNTIME_ERROR
 } InterpretResult;
+
+extern VM vm;
 
 void initVm();
 void freeVm();
