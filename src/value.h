@@ -11,6 +11,7 @@ typedef enum {
 	VAL_NIL,
 	VAL_NUMBER,
 	VAL_OBJ,
+	//VAL_EMPTY
 } ValueType;
 
 typedef struct {

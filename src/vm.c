@@ -35,12 +35,14 @@ void initVm() {
 	vm.stack = NULL;
 	vm.stackCapacity = 0;
 	vm.objects = NULL;
+	initTable(&vm.globals);
 	initTable(&vm.strings);
 	resetStack();
 }
 
 void freeVm() {
 	FREE_ARRAY(Value, vm.stack, vm.stackCapacity);
+	freeTable(&vm.globals);
 	freeTable(&vm.strings);
 	freeObjects();
 }
@@ -99,6 +101,7 @@ static void testStack(bool boolean) {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 //Une astuce macro habituelle
 #define BINARY_OP(value_type, op) \
 	do { \
@@ -146,6 +149,32 @@ static InterpretResult run() {
 		case OP_NIL: push(NIL_VAL); break;
 		case OP_TRUE: push(BOOL_VAL(true)); break;
 		case OP_FALSE: push(BOOL_VAL(false)); break;
+		case OP_POP: pop(); break;
+		case OP_GET_GLOBAL: {
+			ObjString *name = READ_STRING();
+			Value value;
+			if (!tableGet(&vm.globals, name, &value)) {
+				runtimeError("Undefined variable '%s'.", name->chars);
+				return INTERPRET_RUNTIME_ERROR;		
+			}
+			push(value);
+			break;
+		}
+		case OP_DEFINE_GLOBAL: {
+			ObjString *name = READ_STRING();
+			tableSet(&vm.globals, name, peek(0));
+			pop(); // make sure the value be though gc
+			break;
+		}
+		case OP_SET_GLOBAL: {
+			ObjString *name = READ_STRING();
+			if (tableSet(&vm.globals, name, peek(0))) {
+				tableDel(&vm.globals, name);
+				runtimeError("Undefined variable '%s'.", name->chars);
+				return INTERPRET_RUNTIME_ERROR;
+			}
+			break;
+		}
 		case OP_EQUAL: {
 			Value b = pop();
 			Value a = pop();
@@ -179,15 +208,21 @@ static InterpretResult run() {
 			testStack(false); // no-pop action seems to be faster a little bit
 			// testStack(true);
 			break;
+		case OP_PRINT: {
+				print_value(pop());
+				printf("\n");
+				break;
+			}
 		case OP_RETURN: {
-			print_value(pop());
-			printf("\n");
+			//print_value(pop());
+			//printf("\n");
 			return INTERPRET_OK;
 		}
 		}
 	}
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 
