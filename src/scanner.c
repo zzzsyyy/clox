@@ -83,6 +83,18 @@ static void skip_whitespace() {
 			if (peek_next() == '/') {
 				while (peek() != '\n' && !is_at_end())
 					advance();
+			} else if (peek_next() == '*') {
+				advance();
+				advance();
+				while (peek() != '*' || peek_next() != '/') {
+					if (peek() == '\n')
+						scanner.line++;
+					if (is_at_end())
+						return;
+					advance();
+				}
+				advance();
+				advance();
 			} else {
 				return;
 			}
