@@ -1,15 +1,16 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "chunk.h"
 #include "common.h"
 #include "debug.h"
 #include "vm.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 static void repl() {
 	char line[1024];
 	for (;;) {
 		printf("> ");
-		if (!fgets(line, sizeof(line),stdin)) {
+		if (!fgets(line, sizeof(line), stdin)) {
 			printf("\n");
 			break;
 		}
@@ -27,13 +28,13 @@ static char *read_file(const char *path) {
 	fseek(file, EOF, SEEK_END);
 	size_t file_size = ftell(file);
 	rewind(file);
-	char *buffer = (char*)malloc(file_size+1);
+	char *buffer = (char *)malloc(file_size + 1);
 	if (buffer == NULL) {
 		fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
 		exit(74);
 	}
 	size_t byte_read = fread(buffer, sizeof(char), file_size, file);
-	if(byte_read < file_size) {
+	if (byte_read < file_size) {
 		fprintf(stderr, "Could not read file \"%s\".\n", path);
 		exit(74);
 	}
@@ -44,7 +45,7 @@ static char *read_file(const char *path) {
 }
 
 static void run_file(const char *path) {
-	char *src = read_file(path);
+	char *src              = read_file(path);
 	InterpretResult result = interpret(src);
 	free(src);
 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
 	initVm();
 	if (argc == 1) {
 		repl();
-	} else if (argc == 2){
+	} else if (argc == 2) {
 		run_file(argv[1]);
 	} else {
 		fprintf(stderr, "Usage: clox [path]\n");

@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+UseTab: ForIndentation
+ColumnLimit: 120
+IndentWidth: 2
+TabWidth: 2
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AlignArrayOfStructures: Left
+AlignConsecutiveAssignments: true
