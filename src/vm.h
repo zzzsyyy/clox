@@ -12,7 +12,10 @@
 typedef struct {
 	ObjFunction *function;
 	uint8_t *ip;
-	Value *slots;
+	//Value *slots;
+	int *slots;
+	int slots_count;
+	int slots_capacity;
 } CallFrame;
 
 typedef struct {

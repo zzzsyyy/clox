@@ -92,6 +92,16 @@ static Value peek(int distance) {
 	return g_vm.stack[g_vm.stackCount - 1 - distance];
 }
 
+static void push_slots(CallFrame *frame, int var_offset) {
+	if (frame->slots_count + 1 > frame->slots_capacity) {
+		int old_capacity      = frame->slots_capacity;
+		frame->slots_capacity = GROW_CAPACITY(old_capacity);
+		frame->slots          = GROW_ARRAY(int, frame->slots, old_capacity, frame->slots_capacity);
+	}
+	frame->slots[frame->slots_count] = var_offset;
+	frame->slots_count++;
+}
+
 static bool call(ObjFunction *function, int arg_count) {
 	if (arg_count != function->arity) {
 		runtimeError("Expect %d arguments but got %d.", function->arity, arg_count);
@@ -101,10 +111,13 @@ static bool call(ObjFunction *function, int arg_count) {
 		runtimeError("Stack overflow on call_frames.");
 		return false;
 	}
-	CallFrame *frame = &g_vm.frames[g_vm.frame_count++];
-	frame->function  = function;
-	frame->ip        = function->chunk.code;
-	frame->slots     = &g_vm.stack[g_vm.stackCount - arg_count - 1];
+	CallFrame *frame      = &g_vm.frames[g_vm.frame_count++];
+	frame->function       = function;
+	frame->ip             = function->chunk.code;
+	frame->slots          = NULL;
+	frame->slots_capacity = 0;
+	frame->slots_count    = 0;
+	push_slots(frame, g_vm.stackCount - arg_count);
 	return true;
 }
 
@@ -159,6 +172,13 @@ static void testStack(bool boolean) {
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	double exec_time_ns = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
 	printf("RESULT: %f\n", exec_time_ns);
+}
+
+static void print_slots(CallFrame *frame) {
+	for (int i = 0; i < frame->slots_count; i++) {
+		printf("[%d]", frame->slots[i]);
+	}
+	printf("\n");
 }
 
 static InterpretResult run() {
@@ -225,12 +245,13 @@ static InterpretResult run() {
 				break;
 			case OP_GET_LOCAL: {
 				uint8_t slot = READ_BYTE();
-				push(frame->slots[slot]);
+				push(g_vm.stack[frame->slots[slot - 1]]);
 				break;
 			}
 			case OP_SET_LOCAL: {
-				uint8_t slot       = READ_BYTE();
-				frame->slots[slot] = peek(0);
+				uint8_t slot = READ_BYTE();
+				// FIXME
+				push_slots(frame, g_vm.stackCount - 1);
 				break;
 			}
 			case OP_GET_GLOBAL: {
@@ -339,8 +360,7 @@ static InterpretResult run() {
 					return INTERPRET_OK;
 				}
 
-				//! FIXME
-				g_vm.stackCount -= (int)(&g_vm.stack[g_vm.stackCount - 1] - frame->slots) - 1;
+				g_vm.stackCount = frame->slots[0] - 1;
 
 				push(result);
 				frame = &g_vm.frames[g_vm.frame_count - 1];
