@@ -171,7 +171,7 @@ static void testStack(bool boolean) {
 
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	double exec_time_ns = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
-	printf("RESULT: %f\n", exec_time_ns);
+	// printf("RESULT: %f\n", exec_time_ns);
 }
 
 static void print_slots(CallFrame *frame) {
@@ -245,7 +245,11 @@ static InterpretResult run() {
 				break;
 			case OP_GET_LOCAL: {
 				uint8_t slot = READ_BYTE();
-				push(g_vm.stack[frame->slots[slot - 1]]);
+				if (slot > frame->slots_count) {
+					push(g_vm.stack[frame->slots[frame->slots_count - 1] + slot - frame->slots_count]);
+				} else {
+					push(g_vm.stack[frame->slots[slot - 1]]);
+				}
 				break;
 			}
 			case OP_SET_LOCAL: {
