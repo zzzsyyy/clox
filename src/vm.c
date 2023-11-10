@@ -59,9 +59,14 @@ static void define_native(const char *name, NativeFn function) {
 }
 
 void initVm() {
-	g_vm.stack         = NULL;
-	g_vm.stackCapacity = 0;
-	g_vm.objects       = NULL;
+	g_vm.stack           = NULL;
+	g_vm.stackCapacity   = 0;
+	g_vm.objects         = NULL;
+	g_vm.bytes_allocated = 0;
+	g_vm.next_gc         = 1024 * 1024;
+	g_vm.gray_count      = 0;
+	g_vm.gray_capacity   = 0;
+	g_vm.gray_stack      = NULL;
 	initTable(&g_vm.globals);
 	initTable(&g_vm.strings);
 	define_native("clock", clock_native);
@@ -176,8 +181,8 @@ static bool isFalsey(Value value) {
 }
 
 static void concatenate() {
-	ObjString *b = AS_STRING(pop());
-	ObjString *a = AS_STRING(pop());
+	ObjString *b = AS_STRING(peek(0));
+	ObjString *a = AS_STRING(peek(1));
 
 	int length  = a->length + b->length;
 	char *chars = ALLOCATE(char, length + 1);
@@ -186,6 +191,8 @@ static void concatenate() {
 	chars[length] = '\0';
 
 	ObjString *result = takeString(chars, length);
+	pop();
+	pop();
 	push(OBJ_VAL(result));
 }
 

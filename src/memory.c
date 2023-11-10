@@ -4,11 +4,29 @@
 #include <stdlib.h>
 
 #include "chunk.h"
+#include "compiler.h"
 #include "object.h"
 #include "value.h"
 #include "vm.h"
 
+#ifdef DEBUG_LOG_GC
+#include <stdio.h>
+
+#include "debug.h"
+#endif
+
+#define GC_HEAP_GROW_FACTOR 2
+
 void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
+	g_vm.bytes_allocated += newSize - oldSize;
+	if (newSize > oldSize) {
+#ifdef DEBUG_STRESS_GC
+		collect_garbage();
+#endif
+		if (g_vm.bytes_allocated > g_vm.next_gc) {
+			collect_garbage();
+		}
+	}
 	if (newSize == 0) {
 		free(pointer);
 		return NULL;
@@ -19,7 +37,67 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
 	return result;
 }
 
+void mark_object(Obj *object) {
+	if (object == NULL) return;
+	if (object->is_marked) return;
+#ifdef DEBUG_LOG_GC
+	printf("%p mark ", (void *)object);
+	print_value(OBJ_VAL(object));
+	printf("\n");
+#endif
+	object->is_marked = true;
+	if (g_vm.gray_capacity < g_vm.gray_count + 1) {
+		g_vm.gray_capacity = GROW_CAPACITY(g_vm.gray_capacity);
+		g_vm.gray_stack    = (Obj **)realloc(g_vm.gray_stack, sizeof(Obj *) * g_vm.gray_capacity);
+		if (g_vm.gray_stack == NULL) exit(1);
+	}
+	g_vm.gray_stack[g_vm.gray_count++] = object;
+}
+
+void mark_value(Value value) {
+	if (IS_OBJ(value)) mark_object(AS_OBJ(value));
+}
+
+static void mark_array(ValueArray *array) {
+	for (int i = 0; i < array->count; i++) {
+		mark_value(array->values[i]);
+	}
+}
+
+static void blacken_object(Obj *object) {
+#ifdef DEBUG_LOG_GC
+	printf("%p blacken ", (void *)object);
+	print_value((OBJ_VAL(object)));
+	printf("\n");
+#endif
+	switch (object->type) {
+		case OBJ_CLOSURE: {
+			ObjClosure *closure = (ObjClosure *)object;
+			mark_object((Obj *)closure->function);
+			for (int i = 0; i < closure->upvalue_count; i++) {
+				mark_object((Obj *)closure->upvalues[i]);
+			}
+			break;
+		}
+		case OBJ_FUNCTION: {
+			ObjFunction *function = (ObjFunction *)object;
+			mark_object((Obj *)function->name);
+			mark_array(&function->chunk.constants);
+			break;
+		}
+		case OBJ_UPVALUE:
+			mark_value(((ObjUpValue *)object)->closed);
+			break;
+		case OBJ_NATIVE:
+		case OBJ_STRING:
+			break;
+	}
+}
+
 static void freeObject(Obj *object) {
+#ifdef DEBUG_LOG_GC
+	printf("%p free type %d\n", (void *)object, object->type);
+#endif
 	switch (object->type) {
 		case OBJ_CLOSURE: {
 			ObjClosure *closure = (ObjClosure *)object;
@@ -49,6 +127,65 @@ static void freeObject(Obj *object) {
 	}
 }
 
+static void mark_roots() {
+	for (uint8_t i = 0; i < g_vm.stackCount; i++) {
+		mark_value(g_vm.stack[i]);
+	}
+	for (int i = 0; i < g_vm.frame_count; i++) {
+		mark_object((Obj *)g_vm.frames[i].closure);
+	}
+	for (ObjUpValue *upvalue = g_vm.open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
+		mark_object((Obj *)upvalue);
+	}
+	mark_table(&g_vm.globals);
+	mark_compiler_roots();
+}
+
+static void trace_refs() {
+	while (g_vm.gray_count > 0) {
+		Obj *object = g_vm.gray_stack[--g_vm.gray_count];
+		blacken_object(object);
+	}
+}
+
+static void sweep() {
+	Obj *previous = NULL;
+	Obj *object   = g_vm.objects;
+	while (object != NULL) {
+		if (object->is_marked) {
+			object->is_marked = false;
+			previous          = object;
+			object            = object->next;
+		} else {
+			Obj *unreached = object;
+			object         = object->next;
+			if (previous != NULL) {
+				previous->next = object;
+			} else {
+				g_vm.objects = object;
+			}
+			freeObject(unreached);
+		}
+	}
+}
+
+void collect_garbage() {
+#ifdef DEBUG_LOG_GC
+	printf("-- gc begin\n");
+	size_t before = g_vm.bytes_allocated;
+#endif
+	mark_roots();
+	trace_refs();
+	table_rm_white(&g_vm.strings);
+	sweep();
+	g_vm.next_gc = g_vm.bytes_allocated * GC_HEAP_GROW_FACTOR;
+#ifdef DEBUG_LOG_GC
+	printf("-- gc end\n");
+	printf("   collected %zu bytes (de %zu à %zu) next at %zu\n", before - g_vm.bytes_allocated, before,
+	       g_vm.bytes_allocated, g_vm.next_gc);
+#endif
+}
+
 void freeObjects() {
 	Obj *object = g_vm.objects;
 	while (object != NULL) {
@@ -56,4 +193,5 @@ void freeObjects() {
 		freeObject(object);
 		object = next;
 	}
+	free(g_vm.gray_stack);
 }
