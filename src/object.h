@@ -5,7 +5,7 @@
 #include "common.h"
 #include "value.h"
 
-#define OBJ_TYPE(value)        (AS_OBJ(value)->type)
+#define OBJ_TYPE(value)        obj_type(AS_OBJ(value))
 #define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
@@ -36,11 +36,41 @@ ObjString │   │   │   │   │   │   │   │   │   │   │   │ 
           └───────────────┴───────────────────┴───────────────────────────┘
  */
 
-struct Obj {
-	ObjType type;
-	bool is_marked;
-	struct Obj *next;
+// struct Obj {
+// 	ObjType type;
+// 	bool is_marked;
+// 	struct Obj *next;
+// };
+
+/*
+.....TTT .......M NNNNNNNN NNNNNNNN NNNNNNNN NNNNNNNN NNNNNNNN
+
+T = Type enum, M = mark bit, N = next pointer
+*/
+
+struct Obj{
+	uint64_t header;
 };
+
+static inline ObjType obj_type(Obj *object) {
+	return (ObjType)((object->header >> 56) & 0xff);
+}
+
+static inline bool is_marked(Obj *object) {
+	return (bool)((object->header >> 48) & 0x01);
+}
+
+static inline Obj* obj_next(Obj *object) {
+	return (Obj*)(object->header & 0x0000ffffffffffff);
+}
+
+static inline void set_is_marked(Obj* object, bool is_marked) {
+	object->header = (object->header & 0xff00ffffffffffff) | ((uint64_t)is_marked << 48);
+}
+
+static inline void set_obj_next(Obj *object, Obj *next) {
+	object->header = (object->header & 0xffff000000000000) | (uint64_t)next;
+}
 
 typedef struct {
 	Obj obj;
@@ -87,7 +117,7 @@ ObjUpValue *new_upvalue(Value *slot);
 void printObject(Value value);
 
 static inline bool isObjType(Value value, ObjType type) {
-	return IS_OBJ(value) && AS_OBJ(value)->type == type;
+	return IS_OBJ(value) && obj_type(AS_OBJ(value)) == type;
 }
 
 #endif

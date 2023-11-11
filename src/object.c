@@ -13,11 +13,9 @@
 #define ALLOCATE_OBJ(type, objectType) (type *)allocateObject(sizeof(type), objectType)
 
 static Obj *allocateObject(size_t size, ObjType type) {
-	Obj *object       = (Obj *)reallocate(NULL, 0, size);
-	object->type      = type;
-	object->is_marked = false;
-	object->next      = g_vm.objects;
-	g_vm.objects      = object;
+	Obj *object    = (Obj *)reallocate(NULL, 0, size);
+	object->header = (unsigned long)g_vm.objects | (unsigned long)type << 56;
+	g_vm.objects   = object;
 #ifdef DEBUG_LOG_GC
 	printf("%p allocate %zu for %d\n", (void *)object, size, type);
 #endif

@@ -118,7 +118,7 @@ ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t
 void table_rm_white(Table *table) {
 	for (int i = 0; i < table->capacity; i++) {
 		Entry *entry = &table->entries[i];
-		if (entry->key != NULL && !entry->key->obj.is_marked) {
+		if (entry->key != NULL && !is_marked(&entry->key->obj)) {
 			tableDel(table, entry->key);
 		}
 	}

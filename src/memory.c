@@ -39,13 +39,13 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
 
 void mark_object(Obj *object) {
 	if (object == NULL) return;
-	if (object->is_marked) return;
+	if (is_marked(object)) return;
 #ifdef DEBUG_LOG_GC
 	printf("%p mark ", (void *)object);
 	print_value(OBJ_VAL(object));
 	printf("\n");
 #endif
-	object->is_marked = true;
+	set_is_marked(object, true);
 	if (g_vm.gray_capacity < g_vm.gray_count + 1) {
 		g_vm.gray_capacity = GROW_CAPACITY(g_vm.gray_capacity);
 		g_vm.gray_stack    = (Obj **)realloc(g_vm.gray_stack, sizeof(Obj *) * g_vm.gray_capacity);
@@ -70,7 +70,7 @@ static void blacken_object(Obj *object) {
 	print_value((OBJ_VAL(object)));
 	printf("\n");
 #endif
-	switch (object->type) {
+	switch (obj_type(object)) {
 		case OBJ_CLOSURE: {
 			ObjClosure *closure = (ObjClosure *)object;
 			mark_object((Obj *)closure->function);
@@ -96,9 +96,9 @@ static void blacken_object(Obj *object) {
 
 static void freeObject(Obj *object) {
 #ifdef DEBUG_LOG_GC
-	printf("%p free type %d\n", (void *)object, object->type);
+	printf("%p free type %d\n", (void *)object, obj_type(object));
 #endif
-	switch (object->type) {
+	switch (obj_type(object)) {
 		case OBJ_CLOSURE: {
 			ObjClosure *closure = (ObjClosure *)object;
 			FREE_ARRAY(ObjUpValue *, closure->upvalues, closure->upvalue_count);
@@ -152,15 +152,15 @@ static void sweep() {
 	Obj *previous = NULL;
 	Obj *object   = g_vm.objects;
 	while (object != NULL) {
-		if (object->is_marked) {
-			object->is_marked = false;
-			previous          = object;
-			object            = object->next;
+		if (is_marked(object)) {
+			set_is_marked(object, false);
+			previous = object;
+			object   = obj_next(object);
 		} else {
 			Obj *unreached = object;
-			object         = object->next;
+			object         = obj_next(object);
 			if (previous != NULL) {
-				previous->next = object;
+				set_obj_next(previous, object);
 			} else {
 				g_vm.objects = object;
 			}
@@ -189,7 +189,7 @@ void collect_garbage() {
 void freeObjects() {
 	Obj *object = g_vm.objects;
 	while (object != NULL) {
-		Obj *next = object->next;
+		Obj *next = obj_next(object);
 		freeObject(object);
 		object = next;
 	}
