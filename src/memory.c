@@ -6,6 +6,7 @@
 #include "chunk.h"
 #include "compiler.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -71,6 +72,11 @@ static void blacken_object(Obj *object) {
 	printf("\n");
 #endif
 	switch (obj_type(object)) {
+		case OBJ_CLASS: {
+			ObjClass *klass = (ObjClass *)object;
+			mark_object((Obj *)klass->name);
+			break;
+		}
 		case OBJ_CLOSURE: {
 			ObjClosure *closure = (ObjClosure *)object;
 			mark_object((Obj *)closure->function);
@@ -83,6 +89,12 @@ static void blacken_object(Obj *object) {
 			ObjFunction *function = (ObjFunction *)object;
 			mark_object((Obj *)function->name);
 			mark_array(&function->chunk.constants);
+			break;
+		}
+		case OBJ_INSTANCE: {
+			ObjInstance *instance = (ObjInstance *)object;
+			mark_object((Obj *)instance->klass);
+			mark_table(&instance->fields);
 			break;
 		}
 		case OBJ_UPVALUE:
@@ -99,6 +111,10 @@ static void freeObject(Obj *object) {
 	printf("%p free type %d\n", (void *)object, obj_type(object));
 #endif
 	switch (obj_type(object)) {
+		case OBJ_CLASS: {
+			FREE(ObjClass, object);
+			break;
+		}
 		case OBJ_CLOSURE: {
 			ObjClosure *closure = (ObjClosure *)object;
 			FREE_ARRAY(ObjUpValue *, closure->upvalues, closure->upvalue_count);
@@ -109,6 +125,12 @@ static void freeObject(Obj *object) {
 			ObjFunction *function = (ObjFunction *)object;
 			free_chunk(&function->chunk);
 			FREE(ObjFunction, object);
+			break;
+		}
+		case OBJ_INSTANCE: {
+			ObjInstance *instance = (ObjInstance *)object;
+			freeTable(&instance->fields);
+			FREE(ObjInstance, object);
 			break;
 		}
 		case OBJ_NATIVE: {
