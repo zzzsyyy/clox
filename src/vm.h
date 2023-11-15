@@ -25,6 +25,7 @@ typedef struct {
 	int stackCount;
 	Table globals;
 	Table strings;
+	ObjString *init_string;
 	ObjUpValue *open_upvalues;
 	size_t bytes_allocated;
 	size_t next_gc;
