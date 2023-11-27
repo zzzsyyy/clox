@@ -23,7 +23,11 @@ void freeTable(Table *table) {
 
 // linear probing
 static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
-	uint32_t index   = key->hash % capacity;
+#ifdef OPT
+	uint32_t index = key->hash & (capacity - 1);
+#else
+	uint32_t index = key->hash % capacity;
+#endif
 	Entry *tombstone = NULL;
 	for (;;) {
 		Entry *entry = &entries[index];
@@ -36,7 +40,11 @@ static Entry *findEntry(Entry *entries, int capacity, ObjString *key) {
 		} else if (entry->key == key) {
 			return entry;
 		}
+#ifdef OPT
+		index = (index + 1) & (capacity - 1);
+#else
 		index = (index + 1) % capacity;
+#endif
 	}
 }
 
@@ -102,7 +110,11 @@ void tableAddAll(Table *from, Table *to) {
 
 ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t hash) {
 	if (table->count == 0) return NULL;
+#ifdef OPT
+	uint32_t index = hash & (table->capacity - 1);
+#else
 	uint32_t index = hash % table->capacity;
+#endif
 	for (;;) {
 		Entry *entry = &table->entries[index];
 		if (entry->key == NULL) {
@@ -111,7 +123,11 @@ ObjString *tableFindString(Table *table, const char *chars, int length, uint32_t
 		           memcmp(entry->key->chars, chars, length) == 0) {
 			return entry->key;
 		}
+#ifdef OPT
+		index = (index + 1) & (table->capacity - 1);
+#else
 		index = (index + 1) % table->capacity;
+#endif
 	}
 }
 
